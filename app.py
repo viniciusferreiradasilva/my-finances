@@ -380,7 +380,7 @@ if det["amount"]:
                 .mark_bar()
                 .encode(
                     x=alt.X("Categoria:N", title="Categoria", sort="-y"),
-                    xOffset="Período:N",
+                    xOffset=alt.XOffset("Período:N", sort=["Mês Passado", "Esse Mês"]),
                     y=alt.Y("Valor:Q", title="Total Gasto (R$)", scale=alt.Scale(zero=True)),
                     color=alt.Color("Período:N", scale=palette_cat, legend=alt.Legend(title="Período")),
                 )
@@ -392,7 +392,7 @@ if det["amount"]:
                 .mark_text(dy=-6, color="#FFFFFF")
                 .encode(
                     x=alt.X("Categoria:N", sort="-y"),
-                    xOffset="Período:N",
+                    xOffset=alt.XOffset("Período:N", sort=["Mês Passado", "Esse Mês"]),
                     y=alt.Y("Valor:Q"),
                     text=alt.Text("Valor:Q", format=",.2f"),
                 )
