@@ -386,12 +386,24 @@ if det["amount"]:
                 )
             )
 
-            chart_cat = chart_cat.properties(width=700, height=400)
-            chart_cat = chart_cat.configure_axisX(labelAngle=0, labels=True, ticks=False, grid=False, domain=False)
-            chart_cat = chart_cat.configure_axisY(ticks=False, grid=False, labels=False, domain=False)
+            # Value label on top of each bar
+            chart_labels = (
+                alt.Chart(alt.Data(values=_cat_chart_data))
+                .mark_text(dy=-6, color="#FFFFFF")
+                .encode(
+                    x=alt.X("Categoria:N", sort="-y"),
+                    xOffset="Período:N",
+                    y=alt.Y("Valor:Q"),
+                    text=alt.Text("Valor:Q", format=",.2f"),
+                )
+            )
+
+            chart_layer = alt.layer(chart_cat, chart_labels).properties(width=700, height=400)
+            chart_layer = chart_layer.configure_axisX(labelAngle=0, labels=True, ticks=False, grid=False, domain=False)
+            chart_layer = chart_layer.configure_axisY(ticks=False, grid=False, labels=False, domain=False)
 
             st.subheader("\U0001f4c9 Gasto por Categoria — Mês Passado vs Esse Mês")
-            st.altair_chart(chart_cat, use_container_width=True)
+            st.altair_chart(chart_layer, use_container_width=True)
 
 else:
     st.warning("Nenhuma coluna de valor detectada. Mostrando prévia dos dados brutos.")
