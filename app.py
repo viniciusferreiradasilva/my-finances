@@ -230,6 +230,7 @@ if det["amount"]:
             last_avg_daily = last_month_spent / day_end_lm if day_end_lm > 0 else 0.0
             st.metric("Gasto Diário Médio", f"R$ {avg_daily:,.2f}", delta=f"{avg_daily - last_avg_daily:,.2f}" if avg_daily != last_avg_daily else "N/A")
 
+    # ---------------------------------------------------------------------------
     # Breakdown by category by month — grouped bar chart
     if det["date"] and det["category"]:
         df_by_month_cat = df_filtered.dropna(subset=[det["date"], det["category"]]).copy()
@@ -305,6 +306,92 @@ if det["amount"]:
             chart_layer = chart_layer.configure_axisY(ticks=False, grid=False, labels=False, domain=False)
 
             st.altair_chart(chart_layer, use_container_width=True)
+
+    # ---------------------------------------------------------------------------
+    # Grouped bar chart — spending by category: last month vs this month (same day range)
+    # ---------------------------------------------------------------------------
+    if det["date"] and det["category"] and det["amount"]:
+        now = pd.Timestamp.today()
+        this_year, this_month = now.year, now.month
+        day_end = min(now.day, pd.Timestamp(this_year, this_month, 1).days_in_month)
+
+        if this_month == 1:
+            lm_year, lm_month = this_year - 1, 12
+        else:
+            lm_year, lm_month = this_year, this_month - 1
+        lm_days = pd.Timestamp(lm_year, lm_month, 1).days_in_month
+        day_end_lm = min(day_end, lm_days)
+
+        # Date ranges for filtering
+        last_month_start = pd.Timestamp(lm_year, lm_month, 1)
+        last_month_end = pd.Timestamp(lm_year, lm_month, day_end_lm) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        this_month_start = pd.Timestamp(this_year, this_month, 1)
+        this_month_end = pd.Timestamp(this_year, this_month, day_end) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+
+        mask_last = (df[det["date"]] >= last_month_start) & (df[det["date"]] <= last_month_end)
+        mask_this = (df[det["date"]] >= this_month_start) & (df[det["date"]] <= this_month_end)
+
+        df_last = df.loc[mask_last].copy()
+        df_this = df.loc[mask_this].copy()
+
+        # Aggregate spending by category for each period
+        cat_totals_last = (
+            df_last.groupby(det["category"])[det["amount"]]
+            .sum()
+            .reset_index(name="Valor")
+            .rename(columns={det["category"]: "Categoria"})
+        )
+        cat_totals_this = (
+            df_this.groupby(det["category"])[det["amount"]]
+            .sum()
+            .reset_index(name="Valor")
+            .rename(columns={det["category"]: "Categoria"})
+        )
+
+        # Merge so all categories appear for both periods (fillna with 0)
+        merged = pd.merge(
+            cat_totals_last,
+            cat_totals_this,
+            on="Categoria",
+            how="outer",
+            suffixes=("_MêsPassado", "_EsseMês"),
+        ).fillna(0)
+
+        # Build long-form data for Altair grouped bars
+        _cat_chart_data = []
+        for _, r in merged.iterrows():
+            _cat_chart_data.append({
+                "Categoria": str(r["Categoria"]),
+                "Período": "Mês Passado",
+                "Valor": float(r["Valor_MêsPassado"]),
+            })
+            _cat_chart_data.append({
+                "Categoria": str(r["Categoria"]),
+                "Período": "Esse Mês",
+                "Valor": float(r["Valor_EsseMês"]),
+            })
+
+        if _cat_chart_data:
+            palette_cat = alt.Scale(domain=["Mês Passado", "Esse Mês"], range=["#5B8FF9", "#F7608C"])
+
+            # Single chart with xOffset → Vega-Lite groups bars side-by-side (not stacked)
+            chart_cat = (
+                alt.Chart(alt.Data(values=_cat_chart_data))
+                .mark_bar()
+                .encode(
+                    x=alt.X("Categoria:N", title="Categoria", sort="-y"),
+                    xOffset="Período:N",
+                    y=alt.Y("Valor:Q", title="Total Gasto (R$)", scale=alt.Scale(zero=True)),
+                    color=alt.Color("Período:N", scale=palette_cat, legend=alt.Legend(title="Período")),
+                )
+            )
+
+            chart_cat = chart_cat.properties(width=700, height=400)
+            chart_cat = chart_cat.configure_axisX(labelAngle=0, labels=True, ticks=False, grid=False, domain=False)
+            chart_cat = chart_cat.configure_axisY(ticks=False, grid=False, labels=False, domain=False)
+
+            st.subheader("\U0001f4c9 Gasto por Categoria — Mês Passado vs Esse Mês")
+            st.altair_chart(chart_cat, use_container_width=True)
 
 else:
     st.warning("Nenhuma coluna de valor detectada. Mostrando prévia dos dados brutos.")
