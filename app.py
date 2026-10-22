@@ -4,6 +4,8 @@ import altair as alt
 from altair import Chart
 from datetime import date
 
+CHART_BARS_LABEL_FONT_SIZE = 18
+
 # python -m streamlit run app.py
 
 st.set_page_config(page_title="Minhas Finanças", page_icon="\U0001f4b0", layout="wide")
@@ -293,7 +295,7 @@ if det["amount"]:
             # Label at the TOP of each stacked bar showing monthly total (white text)
             chart_labels_total = (
                 alt.Chart(alt.Data(values=_total_data))
-                .mark_text(dy=-4, color="#FFFFFF", fontSize=13, fontWeight="bold", align="center")
+                .mark_text(dy=-4, color="#FFFFFF", fontSize=CHART_BARS_LABEL_FONT_SIZE, align="center")
                 .encode(
                     x=alt.X("Mes:N"),
                     y=alt.Y("Tot:Q"),
@@ -389,7 +391,7 @@ if det["amount"]:
             # Value label on top of each bar
             chart_labels = (
                 alt.Chart(alt.Data(values=_cat_chart_data))
-                .mark_text(dy=-6, color="#FFFFFF")
+                .mark_text(dy=-4, color="#FFFFFF", fontSize=CHART_BARS_LABEL_FONT_SIZE, align="center")
                 .encode(
                     x=alt.X("Categoria:N", sort="-y"),
                     xOffset=alt.XOffset("Período:N", sort=["Mês Passado", "Esse Mês"]),
